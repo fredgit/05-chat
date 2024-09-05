@@ -29,7 +29,6 @@ Content-Type: application/json
 POST http://localhost:6688/api/signin
 Content-Type: application/json
 
-
 {
     "email": "fred@gmail.com",
     "password": "123456"
