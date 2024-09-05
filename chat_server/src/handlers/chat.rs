@@ -30,6 +30,7 @@ pub(crate) async fn get_chat_handler(
 ) -> Result<impl IntoResponse, AppError> {
     let chat = Chat::get_by_id(id as _, &state.pool).await?;
     match chat {
+        // return without status code because it's a GET request?
         Some(chat) => Ok(Json(chat)),
         None => Err(AppError::NotFound(format!("chat id {id}"))),
     }

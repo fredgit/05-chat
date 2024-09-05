@@ -60,12 +60,20 @@ Authorization: Bearer {{signin_token}}
 }
 
 ### get chat list
-
 GET http://localhost:6688/api/chats
 Authorization: Bearer {{signin_token}}
 
 
-### get user list
+### get chat info
+GET http://localhost:6688/api/chats/1
+Authorization: Bearer {{signin_token}}
 
+
+### get invalid chat info
+GET http://localhost:6688/api/chats/2
+Authorization: Bearer {{signin_token}}
+
+
+### get user list
 GET http://localhost:6688/api/users
 Authorization: Bearer {{signin_token}}
