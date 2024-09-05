@@ -77,3 +77,25 @@ Authorization: Bearer {{signin_token}}
 ### get user list
 GET http://localhost:6688/api/users
 Authorization: Bearer {{signin_token}}
+
+### upload files
+POST http://localhost:6688/api/upload
+Authorization: Bearer {{signin_token}}
+Content-Type: multipart/form-data; boundary=MyBoundary
+
+--MyBoundary
+Content-Disposition: form-data; filename="testupload.jpeg"
+Content-Type: application/octet-stream
+
+< /home/fredmo/Pictures/testupload.jpeg
+--MyBoundary
+Content-Disposition: form-data; filename="hello.txt"
+Content-Type: text/plain
+
+Hello, World!
+--MyBoundary--
+
+
+### get files
+GET http://localhost:6688/api/files/1/eb6/21e/c5a09f99ac4a9a4165e5c26bbf0c052320.jpeg
+Authorization: Bearer {{signin_token}}
