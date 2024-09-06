@@ -98,3 +98,35 @@ Hello, World!
 ### get files
 GET http://localhost:6688/api/files/1/eb6/21e/c5a09f99ac4a9a4165e5c26bbf0c052320.jpeg
 Authorization: Bearer {{signin_token}}
+
+
+### send a message without files
+
+POST http://localhost:6688/api/chats/1
+Content-Type: application/json
+Authorization: Bearer {{signin_token}}
+
+{
+    "content": "Hello, rust!",
+    "files": []
+}
+
+
+### send a message with files
+
+POST http://localhost:6688/api/chats/1
+Content-Type: application/json
+Authorization: Bearer {{signin_token}}
+
+{
+    "content": "Hello, rust!",
+    "files": [
+        "/files/1/eb6/21e/c5a09f99ac4a9a4165e5c26bbf0c052320.jpeg",
+        "/files/1/0a0/a9f/2a6772942557ab5355d76af442f8f65e01.txt"
+    ]
+}
+
+### get messages
+
+GET http://localhost:6688/api/chats/1/messages?limit=6&last_id=5
+Authorization: Bearer {{signin_token}}

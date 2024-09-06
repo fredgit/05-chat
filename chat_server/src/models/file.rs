@@ -1,6 +1,9 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
-use crate::ChatFile;
+use crate::{AppError, ChatFile};
 use sha1::{Digest, Sha1};
 
 impl ChatFile {
@@ -14,7 +17,7 @@ impl ChatFile {
     }
 
     pub fn url(&self) -> String {
-        format!("/files/{}/{}", self.ws_id, self.hash_to_path())
+        format!("/files/{}", self.hash_to_path())
     }
 
     pub fn path(&self, base_dir: &Path) -> PathBuf {
@@ -26,6 +29,49 @@ impl ChatFile {
         let (part1, part2) = self.hash.split_at(3);
         let (part2, part3) = part2.split_at(3);
         format!("{}/{}/{}/{}.{}", self.ws_id, part1, part2, part3, self.ext)
+    }
+}
+
+impl FromStr for ChatFile {
+    type Err = AppError;
+
+    // convert /files/s/339/807/e635afbeab088ce33206fdf4223a6bb156.png to ChatFile, /s/ is ws_id
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let Some(s) = s.strip_prefix("/files/") else {
+            return Err(AppError::ChatFileError(format!(
+                "Invalid chat file path: {}",
+                s
+            )));
+        };
+
+        let parts: Vec<&str> = s.split('/').collect();
+        if parts.len() != 4 {
+            return Err(AppError::ChatFileError(format!(
+                "File path {} does not valid",
+                s
+            )));
+        }
+
+        let Ok(ws_id) = parts[0].parse::<u64>() else {
+            return Err(AppError::ChatFileError(format!(
+                "Invalid workspace id: {}",
+                parts[1] // why not use parts[0] here?
+            )));
+        };
+
+        let Some((part3, ext)) = parts[3].split_once('.') else {
+            return Err(AppError::ChatFileError(format!(
+                "Invalid file name: {}",
+                parts[3]
+            )));
+        };
+
+        let hash = format!("{}{}{}", parts[1], parts[2], part3);
+        Ok(Self {
+            ws_id,
+            ext: ext.to_string(),
+            hash,
+        })
     }
 }
 

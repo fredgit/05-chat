@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS messages(
   chat_id bigint NOT NULL REFERENCES chats(id),
   sender_id bigint NOT NULL REFERENCES users(id),
   content text NOT NULL,
-  files text[],
-  created_at timestamptz DEFAULT CURRENT_TIMESTAMP
+  files text[] DEFAULT '{}',
+    created_at timestamptz DEFAULT CURRENT_TIMESTAMP
 );
 
 -- create index for messages for chat_id and created_at order by created_at desc
