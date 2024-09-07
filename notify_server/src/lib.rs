@@ -1,15 +1,29 @@
+mod config;
+mod error;
+mod notif;
 mod sse;
 
+use std::{ops::Deref, sync::Arc};
+
 use axum::{
+    middleware::from_fn_with_state,
     response::{Html, IntoResponse},
     routing::get,
     Router,
 };
-use chat_core::{Chat, Message};
-use futures::StreamExt;
-use sqlx::postgres::PgListener;
+use chat_core::{
+    middlewares::{verify_token, TokenVerify},
+    Chat, DecodingKey, Message, User,
+};
+use config::AppConfig;
+use dashmap::DashMap;
 use sse::sse_handler;
-use tracing::info;
+use tokio::sync::broadcast;
+
+pub use error::AppError;
+pub use notif::{setup_pg_listener, AppEvent};
+
+pub type UserMap = Arc<DashMap<u64, broadcast::Sender<Arc<AppEvent>>>>;
 
 pub enum Event {
     NewChat(Chat),
@@ -18,31 +32,53 @@ pub enum Event {
     NewMessage(Message),
 }
 
-const INDEX_HTML: &str = include_str!("../index.html");
+#[derive(Clone)]
+pub struct AppState(Arc<AppStateInner>);
 
-pub fn get_router() -> Router {
-    Router::new()
-        .route("/", get(index_handler))
-        .route("/events", get(sse_handler))
+pub struct AppStateInner {
+    pub config: AppConfig,
+    users: UserMap,
+    dk: DecodingKey,
 }
 
-pub async fn setup_pg_listener() -> anyhow::Result<()> {
-    let mut listener =
-        PgListener::connect("postgresql://postgres:postgres@localhost:5432/chat").await?;
-    listener.listen("chat_updated").await?;
-    listener.listen("chat_message_created").await?;
+const INDEX_HTML: &str = include_str!("../index.html");
 
-    let mut stream = listener.into_stream();
+pub fn get_router() -> (Router, AppState) {
+    let config = AppConfig::load().expect("Failed to load config");
+    let state = AppState::new(config);
+    let app = Router::new()
+        .route("/events", get(sse_handler))
+        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
+        .route("/", get(index_handler))
+        .with_state(state.clone());
 
-    tokio::spawn(async move {
-        while let Some(Ok(notif)) = stream.next().await {
-            info!("Received notification: {:?}", notif);
-        }
-    });
-
-    Ok(())
+    (app, state)
 }
 
 async fn index_handler() -> impl IntoResponse {
     Html(INDEX_HTML)
+}
+
+impl TokenVerify for AppState {
+    type Error = AppError;
+
+    fn verify(&self, token: &str) -> Result<User, Self::Error> {
+        Ok(self.dk.verify(token)?)
+    }
+}
+
+impl Deref for AppState {
+    type Target = AppStateInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl AppState {
+    pub fn new(config: AppConfig) -> Self {
+        let dk = DecodingKey::load(&config.auth.pk).expect("Failed to load public key");
+        let users = Arc::new(DashMap::new());
+        Self(Arc::new(AppStateInner { config, dk, users }))
+    }
 }

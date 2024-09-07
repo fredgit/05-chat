@@ -4,8 +4,10 @@ CREATE OR REPLACE FUNCTION add_to_chat()
   RETURNS TRIGGER
   AS $$
 BEGIN
+  -- a log for notice -> INFO sqlx::postgres::notice: add_to_chat: (6,1,abc,private_channel,"{1,2}","2024-09-07 10:03:12.877627+00")
   RAISE NOTICE 'add_to_chat: %', NEW;
   PERFORM
+    -- a log for pg_notify -> INFO notify_server::notif: Received notification: PgNotification { process_id: 70027, channel: "chat_updated", payload: "{\"op\" : \"INSERT\", \"old\" : null, \"new\" : {\"id\":6,\"ws_id\":1,\"name\":\"abc\",\"type\":\"private_channel\",\"members\":[1,2],\"created_at\":\"2024-09-07T10:03:12.877627+00:00\"}}" }
     pg_notify('chat_updated', json_build_object('op', TG_OP, 'old', OLD, 'new', NEW)::text);
   RETURN NEW;
 END;
@@ -21,11 +23,20 @@ CREATE TRIGGER add_to_chat_trigger
 CREATE OR REPLACE FUNCTION add_to_message()
   RETURNS TRIGGER
   AS $$
+DECLARE
+  USERS bigint[];
 BEGIN
   IF TG_OP = 'INSERT' THEN
     RAISE NOTICE 'add_to_message: %', NEW;
+    -- select chat with chat_id in NEW
+    SELECT
+      members INTO USERS
+    FROM
+      chats
+    WHERE
+      id = NEW.chat_id;
     PERFORM
-      pg_notify('chat_message_created', row_to_json(NEW)::text);
+      pg_notify('chat_message_created', json_build_object('message', NEW, 'members', USERS)::text);
   END IF;
   RETURN NEW;
 END;
